@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Disable Mobile Text Selection Action Bar</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 600px;
+            margin: 0 auto;
+            line-height: 1.6;
+        }
+
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+
+        .container {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            background-color: #f9f9f9;
+        }
+
+        .selectable-text {
+            position: relative;
+        }
+
+        .selectable-text span {
+            display: block;
+            margin-bottom: 10px;
+            padding: 10px;
+            background-color: #fff;
+            border-radius: 4px;
+            border-left: 3px solid #4285f4;
+        }
+
+        .strategy-toggle {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 10px;
+            margin: 20px 0;
+        }
+
+        button {
+            padding: 8px 12px;
+            background-color: #4285f4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background-color: #2b6bc5;
+        }
+
+        button.active {
+            background-color: #34a853;
+        }
+
+        .status {
+            margin-top: 10px;
+            padding: 10px;
+            background-color: #e6f4ea;
+            border-radius: 4px;
+            border-left: 3px solid #34a853;
+        }
+
+        /* CSS Method - Overlay approach */
+        .css-method::after {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            pointer-events: none;
+            user-select: text;
+        }
+
+        /* For demonstration purposes */
+        .paragraph {
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <h1>Disable Mobile Action Bar Demo</h1>
+    
+    <div class="strategy-toggle">
+        <button id="css-method">CSS Method</button>
+        <button id="js-contextmenu">JS Context Menu</button>
+        <button id="js-touchevents">JS Touch Events</button>
+        <button id="combined-method" class="active">Combined Method (Default)</button>
+        <button id="reset">Reset (Action Bar Enabled)</button>
+    </div>
+    
+    <div class="status" id="status">
+        Currently using: <strong>Combined Method</strong> - Try selecting text below
+    </div>
+    
+    <div class="container">
+        <div class="selectable-text" id="text-container">
+            <span class="paragraph">This is the first paragraph. You can select this text, but the action bar should be disabled based on the method you choose.</span>
+            <span class="paragraph">This is the second paragraph with more content to select. Notice how you can still select text normally but the action bar won't appear depending on which method is active.</span>
+            <span class="paragraph">Lorem ipsum dolor sit amet, consectetur adipiscing elit. Nullam ultricies erat eget tincidunt eleifend. Mauris sed metus vel orci posuere fringilla.</span>
+        </div>
+    </div>
+    
+    <script>
+        // Get DOM elements
+        const textContainer = document.getElementById('text-container');
+        const statusElement = document.getElementById('status');
+        const cssMethodBtn = document.getElementById('css-method');
+        const jsContextMenuBtn = document.getElementById('js-contextmenu');
+        const jsTouchEventsBtn = document.getElementById('js-touchevents');
+        const combinedMethodBtn = document.getElementById('combined-method');
+        const resetBtn = document.getElementById('reset');
+        
+        // Variables to track active event listeners
+        let touchEndHandler = null;
+        let contextMenuHandler = null;
+        let touchTimeout = null;
+        
+        // Function to update status message
+        function updateStatus(method) {
+            statusElement.innerHTML = `Currently using: <strong>${method}</strong> - Try selecting text below`;
+        }
+        
+        // Set all buttons to inactive state
+        function resetButtons() {
+            cssMethodBtn.classList.remove('active');
+            jsContextMenuBtn.classList.remove('active');
+            jsTouchEventsBtn.classList.remove('active');
+            combinedMethodBtn.classList.remove('active');
+            resetBtn.classList.remove('active');
+        }
+        
+        // Remove all applied methods and event listeners
+        function removeAllMethods() {
+            // Remove CSS class
+            textContainer.classList.remove('css-method');
+            
+            // Remove contextmenu event listener if exists
+            if (contextMenuHandler) {
+                textContainer.removeEventListener('contextmenu', contextMenuHandler);
+                contextMenuHandler = null;
+            }
+            
+            // Remove touchend event listener if exists
+            if (touchEndHandler) {
+                textContainer.removeEventListener('touchend', touchEndHandler);
+                touchEndHandler = null;
+            }
+            
+            // Clear any pending timeout
+            if (touchTimeout) {
+                clearTimeout(touchTimeout);
+                touchTimeout = null;
+            }
+        }
+        
+        // CSS Method - Using overlay technique
+        cssMethodBtn.addEventListener('click', function() {
+            resetButtons();
+            this.classList.add('active');
+            removeAllMethods();
+            
+            // Apply CSS method
+            textContainer.classList.add('css-method');
+            updateStatus('CSS Method');
+        });
+        
+        // JS Context Menu Method
+        jsContextMenuBtn.addEventListener('click', function() {
+            resetButtons();
+            this.classList.add('active');
+            removeAllMethods();
+            
+            // Apply JS Context Menu method
+            contextMenuHandler = function(e) {
+                e.preventDefault();
+                return false;
+            };
+            
+            textContainer.addEventListener('contextmenu', contextMenuHandler);
+            updateStatus('JS Context Menu Method');
+        });
+        
+        // JS Touch Events Method
+        jsTouchEventsBtn.addEventListener('click', function() {
+            resetButtons();
+            this.classList.add('active');
+            removeAllMethods();
+            
+            // Apply JS Touch Events method
+            touchEndHandler = function(e) {
+                // Clear any existing timeout
+                if (touchTimeout) clearTimeout(touchTimeout);
+                
+                // Set a short timeout to let selection happen but cancel action bar
+                touchTimeout = setTimeout(() => {
+                    // This creates a fake touch event elsewhere to dismiss the action bar
+                    document.body.dispatchEvent(new TouchEvent('touchstart', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    }));
+                }, 100);
+            };
+            
+            textContainer.addEventListener('touchend', touchEndHandler);
+            updateStatus('JS Touch Events Method');
+        });
+        
+        // Combined Method (most effective)
+        combinedMethodBtn.addEventListener('click', function() {
+            resetButtons();
+            this.classList.add('active');
+            removeAllMethods();
+            
+            // Apply all methods together
+            textContainer.classList.add('css-method');
+            
+            contextMenuHandler = function(e) {
+                e.preventDefault();
+                return false;
+            };
+            textContainer.addEventListener('contextmenu', contextMenuHandler);
+            
+            touchEndHandler = function(e) {
+                if (touchTimeout) clearTimeout(touchTimeout);
+                touchTimeout = setTimeout(() => {
+                    document.body.dispatchEvent(new TouchEvent('touchstart', {
+                        bubbles: true,
+                        cancelable: true,
+                        view: window
+                    }));
+                }, 100);
+            };
+            textContainer.addEventListener('touchend', touchEndHandler);
+            
+            updateStatus('Combined Method');
+        });
+        
+        // Reset - Remove all methods
+        resetBtn.addEventListener('click', function() {
+            resetButtons();
+            this.classList.add('active');
+            removeAllMethods();
+            updateStatus('None (Action Bar Enabled)');
+        });
+        
+        // Initialize with combined method by default
+        combinedMethodBtn.click();
+    </script>
+</body>
+</html>
