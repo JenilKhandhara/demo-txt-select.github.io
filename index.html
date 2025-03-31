@@ -83,6 +83,12 @@
             user-select: text;
         }
 
+        /* iOS-specific fix */
+        .ios-specific-fix {
+            -webkit-user-select: text;  /* Make text selectable */
+            -webkit-touch-callout: none;  /* Specifically targets iOS callout */
+        }
+
         /* For demonstration purposes */
         .paragraph {
             color: #333;
@@ -96,6 +102,7 @@
         <button id="css-method">CSS Method</button>
         <button id="js-contextmenu">JS Context Menu</button>
         <button id="js-touchevents">JS Touch Events</button>
+        <button id="ios-specific">iOS Specific</button>
         <button id="combined-method" class="active">Combined Method (Default)</button>
         <button id="reset">Reset (Action Bar Enabled)</button>
     </div>
@@ -119,6 +126,7 @@
         const cssMethodBtn = document.getElementById('css-method');
         const jsContextMenuBtn = document.getElementById('js-contextmenu');
         const jsTouchEventsBtn = document.getElementById('js-touchevents');
+        const iosSpecificBtn = document.getElementById('ios-specific');
         const combinedMethodBtn = document.getElementById('combined-method');
         const resetBtn = document.getElementById('reset');
         
@@ -126,6 +134,8 @@
         let touchEndHandler = null;
         let contextMenuHandler = null;
         let touchTimeout = null;
+        let selectionChangeHandler = null;
+        let mouseUpHandler = null;
         
         // Function to update status message
         function updateStatus(method) {
@@ -137,14 +147,16 @@
             cssMethodBtn.classList.remove('active');
             jsContextMenuBtn.classList.remove('active');
             jsTouchEventsBtn.classList.remove('active');
+            iosSpecificBtn.classList.remove('active');
             combinedMethodBtn.classList.remove('active');
             resetBtn.classList.remove('active');
         }
         
         // Remove all applied methods and event listeners
         function removeAllMethods() {
-            // Remove CSS class
+            // Remove CSS classes
             textContainer.classList.remove('css-method');
+            textContainer.classList.remove('ios-specific-fix');
             
             // Remove contextmenu event listener if exists
             if (contextMenuHandler) {
@@ -156,6 +168,19 @@
             if (touchEndHandler) {
                 textContainer.removeEventListener('touchend', touchEndHandler);
                 touchEndHandler = null;
+            }
+            
+            // Remove selectionchange listener if exists
+            if (selectionChangeHandler) {
+                document.removeEventListener('selectionchange', selectionChangeHandler);
+                selectionChangeHandler = null;
+            }
+            
+            // Remove mouseup listener if exists
+            if (mouseUpHandler) {
+                textContainer.removeEventListener('mouseup', mouseUpHandler);
+                textContainer.removeEventListener('touchend', mouseUpHandler);
+                mouseUpHandler = null;
             }
             
             // Clear any pending timeout
@@ -218,6 +243,114 @@
             updateStatus('JS Touch Events Method');
         });
         
+        // iOS Specific Method
+        iosSpecificBtn.addEventListener('click', function() {
+            resetButtons();
+            this.classList.add('active');
+            removeAllMethods();
+            
+            // Apply iOS specific CSS
+            textContainer.classList.add('ios-specific-fix');
+            
+            // iOS specific selection handler
+            selectionChangeHandler = function() {
+                const selection = window.getSelection();
+                if (selection.toString().length > 0) {
+                    // Force blur on any focused elements
+                    if (document.activeElement) {
+                        document.activeElement.blur();
+                    }
+                    
+                    // Create two brief touches to disrupt the menu
+                    setTimeout(() => {
+                        document.body.dispatchEvent(new TouchEvent('touchstart', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        }));
+                        
+                        setTimeout(() => {
+                            document.body.dispatchEvent(new TouchEvent('touchend', {
+                                bubbles: true,
+                                cancelable: true,
+                                view: window
+                            }));
+                        }, 10);
+                    }, 10);
+                }
+            };
+            
+            // Additional mouseup handler for iOS
+            mouseUpHandler = function(e) {
+                // Create a temporary overlay to intercept touches
+                const createOverlay = function() {
+                    const selection = window.getSelection();
+                    if (selection.toString().length > 0) {
+                        try {
+                            const range = selection.getRangeAt(0);
+                            const rect = range.getBoundingClientRect();
+                            
+                            // Create overlay
+                            const overlay = document.createElement('div');
+                            overlay.style.position = 'absolute';
+                            overlay.style.top = (rect.top + window.scrollY) + 'px';
+                            overlay.style.left = (rect.left + window.scrollX) + 'px';
+                            overlay.style.width = rect.width + 'px';
+                            overlay.style.height = rect.height + 'px';
+                            overlay.style.backgroundColor = 'transparent';
+                            overlay.style.zIndex = '9999';
+                            
+                            document.body.appendChild(overlay);
+                            
+                            // Remove overlay after a short delay
+                            setTimeout(() => {
+                                if (document.body.contains(overlay)) {
+                                    document.body.removeChild(overlay);
+                                }
+                            }, 300);
+                        } catch (err) {
+                            console.log("Error creating overlay:", err);
+                        }
+                    }
+                };
+                
+                // Special handling for iOS
+                setTimeout(createOverlay, 50);
+                
+                // iOS specific - use timeout and try to manipulate the selection
+                setTimeout(() => {
+                    const selection = window.getSelection();
+                    if (selection.rangeCount > 0) {
+                        // Save current selection
+                        const savedRange = selection.getRangeAt(0).cloneRange();
+                        
+                        // Create temporary element outside viewport
+                        const temp = document.createElement('div');
+                        temp.style.position = 'absolute';
+                        temp.style.left = '-9999px';
+                        temp.textContent = 'temp';
+                        document.body.appendChild(temp);
+                        
+                        // Select the temporary element
+                        selection.selectAllChildren(temp);
+                        
+                        // Restore original selection after a brief delay
+                        setTimeout(() => {
+                            selection.removeAllRanges();
+                            selection.addRange(savedRange);
+                            document.body.removeChild(temp);
+                        }, 10);
+                    }
+                }, 50);
+            };
+            
+            document.addEventListener('selectionchange', selectionChangeHandler);
+            textContainer.addEventListener('mouseup', mouseUpHandler);
+            textContainer.addEventListener('touchend', mouseUpHandler);
+            
+            updateStatus('iOS Specific Method');
+        });
+        
         // Combined Method (most effective)
         combinedMethodBtn.addEventListener('click', function() {
             resetButtons();
@@ -225,14 +358,19 @@
             removeAllMethods();
             
             // Apply all methods together
-            textContainer.classList.add('css-method');
             
+            // CSS methods
+            textContainer.classList.add('css-method');
+            textContainer.classList.add('ios-specific-fix');
+            
+            // Context menu method
             contextMenuHandler = function(e) {
                 e.preventDefault();
                 return false;
             };
             textContainer.addEventListener('contextmenu', contextMenuHandler);
             
+            // Touch event method
             touchEndHandler = function(e) {
                 if (touchTimeout) clearTimeout(touchTimeout);
                 touchTimeout = setTimeout(() => {
@@ -245,6 +383,72 @@
             };
             textContainer.addEventListener('touchend', touchEndHandler);
             
+            // iOS specific selection handler
+            selectionChangeHandler = function() {
+                const selection = window.getSelection();
+                if (selection.toString().length > 0) {
+                    // Force blur on any focused elements
+                    if (document.activeElement) {
+                        document.activeElement.blur();
+                    }
+                    
+                    // Create brief touches to disrupt the menu
+                    setTimeout(() => {
+                        document.body.dispatchEvent(new TouchEvent('touchstart', {
+                            bubbles: true,
+                            cancelable: true,
+                            view: window
+                        }));
+                        
+                        setTimeout(() => {
+                            document.body.dispatchEvent(new TouchEvent('touchend', {
+                                bubbles: true,
+                                cancelable: true,
+                                view: window
+                            }));
+                        }, 10);
+                    }, 10);
+                }
+            };
+            document.addEventListener('selectionchange', selectionChangeHandler);
+            
+            // Additional mouseup handler for iOS
+            mouseUpHandler = function(e) {
+                // Create a temporary overlay to intercept touches
+                setTimeout(() => {
+                    const selection = window.getSelection();
+                    if (selection.toString().length > 0) {
+                        try {
+                            const range = selection.getRangeAt(0);
+                            const rect = range.getBoundingClientRect();
+                            
+                            // Create overlay
+                            const overlay = document.createElement('div');
+                            overlay.style.position = 'absolute';
+                            overlay.style.top = (rect.top + window.scrollY) + 'px';
+                            overlay.style.left = (rect.left + window.scrollX) + 'px';
+                            overlay.style.width = rect.width + 'px';
+                            overlay.style.height = rect.height + 'px';
+                            overlay.style.backgroundColor = 'transparent';
+                            overlay.style.zIndex = '9999';
+                            
+                            document.body.appendChild(overlay);
+                            
+                            // Remove overlay after a short delay
+                            setTimeout(() => {
+                                if (document.body.contains(overlay)) {
+                                    document.body.removeChild(overlay);
+                                }
+                            }, 300);
+                        } catch (err) {
+                            console.log("Error creating overlay:", err);
+                        }
+                    }
+                }, 50);
+            };
+            textContainer.addEventListener('mouseup', mouseUpHandler);
+            textContainer.addEventListener('touchend', mouseUpHandler);
+            
             updateStatus('Combined Method');
         });
         
@@ -254,6 +458,26 @@
             this.classList.add('active');
             removeAllMethods();
             updateStatus('None (Action Bar Enabled)');
+        });
+
+        // Utility function to detect iOS
+        function isIOS() {
+            return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+
+        // Add an iOS detection notification
+        document.addEventListener('DOMContentLoaded', function() {
+            if (isIOS()) {
+                const iosNotice = document.createElement('div');
+                iosNotice.style.padding = '10px';
+                iosNotice.style.margin = '10px 0';
+                iosNotice.style.backgroundColor = '#ffe8e8';
+                iosNotice.style.borderLeft = '3px solid #ff4d4d';
+                iosNotice.style.borderRadius = '4px';
+                iosNotice.innerHTML = '<strong>iOS Device Detected!</strong> Try the "iOS Specific" or "Combined Method" button for best results.';
+                document.body.insertBefore(iosNotice, document.querySelector('.strategy-toggle'));
+            }
         });
         
         // Initialize with combined method by default
