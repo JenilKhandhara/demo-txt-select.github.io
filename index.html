@@ -279,16 +279,10 @@
             setTimeout(() => {
                 const selection = window.getSelection();
                 if (selection.rangeCount > 0 && selection.toString().length > 0) {
-                    // Save current selection
                     const savedRange = selection.getRangeAt(0).cloneRange();
-                    
-                    // Clear the selection
+                    // Clear the selection and immediately restore it
                     selection.removeAllRanges();
-                    
-                    // Restore original selection after a brief delay
-                    setTimeout(() => {
-                        selection.addRange(savedRange);
-                    }, 10);
+                    selection.addRange(savedRange);
                 }
             }, 50);
         }
