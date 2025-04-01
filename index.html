@@ -282,21 +282,12 @@
                     // Save current selection
                     const savedRange = selection.getRangeAt(0).cloneRange();
                     
-                    // Create temporary element outside viewport
-                    const temp = document.createElement('div');
-                    temp.style.position = 'absolute';
-                    temp.style.left = '-9999px';
-                    temp.textContent = 'temp';
-                    document.body.appendChild(temp);
-                    
-                    // Select the temporary element briefly
-                    selection.selectAllChildren(temp);
+                    // Clear the selection
+                    selection.removeAllRanges();
                     
                     // Restore original selection after a brief delay
                     setTimeout(() => {
-                        selection.removeAllRanges();
                         selection.addRange(savedRange);
-                        document.body.removeChild(temp);
                     }, 10);
                 }
             }, 50);
