@@ -22,7 +22,7 @@
 <body>
 
   <div id="text-container" contenteditable="true">
-    <span>Click here to begin. </span>
+    <span id="here">Click here to begin. </span>
     <span>यह एक परीक्षण वाक्य है। </span>
     <span>这是一个测试句子。 </span>
     <span>هذه جملة اختبار. </span>
@@ -106,13 +106,17 @@
         const selection = window.getSelection();
         selection.removeAllRanges();
         const range = document.createRange();
-        range.setStart(info.textNode, info.start);
-        range.setEnd(info.textNode, info.end);
-        setTimeout(() => {
-            selection.addRange(range);
-            // document.dispatchEvent(new Event('selectionChange'));
-            console.log('HERE4',window.getSelection().toString());
-        }, 50);
+        // range.setStart(info.textNode, info.start);
+        // range.setEnd(info.textNode, info.end);
+         // selectedText.removeAllRanges();
+         // const range = document.createRange();
+         range.selectNodeContents(document.getElementById('here'));
+         selection.addRange(range);
+         // console.log('HERE4',document.getElementById('here'), window.getSelection().toString());
+        // setTimeout(() => {
+        //     selection.addRange(range);
+        //     console.log('HERE4',window.getSelection().toString());
+        // }, 50);
       }
     }
 
@@ -120,7 +124,9 @@
     container.addEventListener('touchend', handleTapOrClick);
 
     document.addEventListener('selectionchange', (e) => {
-      console.log('HERE5', window.getSelection().toString());
+         let selectedText = window.getSelection();
+        console.log('HERE5', selectedText.toString());
+        
     });
     // Reference to an output container, use 'pre' styling for JSON output
   var output = document.createElement('pre');
