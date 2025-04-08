@@ -35,8 +35,9 @@
     function handleWordSelect() {
       setTimeout(() => {
         const selection = window.getSelection();
+        console.log('HERE2');
         if (!selection.rangeCount) return;
-
+        console.log('HERE3');
         const range = selection.getRangeAt(0);
         const node = selection.anchorNode;
 
@@ -59,7 +60,7 @@
 
             selection.removeAllRanges();
             selection.addRange(wordRange);
-            console.log('HERE');
+            console.log('HERE', window.getSelection().toString());
 
             document.getElementById('selected-word').textContent = segment.segment;
             break;
