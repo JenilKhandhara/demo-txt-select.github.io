@@ -108,6 +108,7 @@
         range.setEnd(info.textNode, info.end);
         setTimeout(() => {
             selection.addRange(range);
+            // document.dispatchEvent(new Event('selectionChange'));
             console.log('HERE4',window.getSelection().toString());
         }, 50);
       }
@@ -116,7 +117,7 @@
     container.addEventListener('click', handleTapOrClick);
     container.addEventListener('touchend', handleTapOrClick);
 
-    document.addEventListener('selectionChange', (e) => {
+    document.addEventListener('selectionchange', (e) => {
       console.log('HERE5', window.getSelection().toString());
     });
     // Reference to an output container, use 'pre' styling for JSON output
