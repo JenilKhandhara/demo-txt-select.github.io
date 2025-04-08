@@ -46,43 +46,53 @@
     return sel && sel.toString().length > 0;
   }
 
-  function selectWordAtPoint(x, y) {
-    if (isTextSelected()) return;
+ function selectWordAtPoint(x, y) {
+  if (isTextSelected()) return;
 
-    // Wrap in requestAnimationFrame + setTimeout to avoid flicker on mobile
-    requestAnimationFrame(() => {
-      setTimeout(() => {
-        const range = getCaretRangeAt(x, y);
-        if (!range) return;
+  requestAnimationFrame(() => {
+    setTimeout(() => {
+      const range = getCaretRangeAt(x, y);
+      if (!range) return;
 
-        const node = range.startContainer;
-        const offset = range.startOffset;
+      const node = range.startContainer;
+      const offset = range.startOffset;
 
-        if (node.nodeType === Node.TEXT_NODE) {
-          const text = node.textContent;
-          const left = text.slice(0, offset);
-          const right = text.slice(offset);
+      if (node.nodeType === Node.TEXT_NODE) {
+        const text = node.textContent;
+        const left = text.slice(0, offset);
+        const right = text.slice(offset);
 
-          const leftWord = left.match(/[\p{L}\p{N}]+$/u)?.[0] ?? "";
-          const rightWord = right.match(/^[\p{L}\p{N}]+/u)?.[0] ?? "";
-          const word = leftWord + rightWord;
+        const leftWord = left.match(/[\p{L}\p{N}]+$/u)?.[0] ?? "";
+        const rightWord = right.match(/^[\p{L}\p{N}]+/u)?.[0] ?? "";
+        const word = leftWord + rightWord;
 
-          if (!word) return;
+        if (!word) return;
 
-          const start = offset - leftWord.length;
-          const end = offset + rightWord.length;
+        const start = offset - leftWord.length;
+        const end = offset + rightWord.length;
 
-          const wordRange = document.createRange();
-          wordRange.setStart(node, start);
-          wordRange.setEnd(node, end);
+        const wordRange = document.createRange();
+        wordRange.setStart(node, start);
+        wordRange.setEnd(node, end);
 
-          const selection = window.getSelection();
-          selection.removeAllRanges();
-          selection.addRange(wordRange);
-        }
-      }, 30); // slight delay improves stability
-    });
-  }
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(wordRange);
+
+        // --- ✨ Trick: Trigger native selection UI ---
+        const wasEditable = container.contentEditable;
+        container.contentEditable = 'true';
+        container.focus();
+
+        // Stabilize selection on Android: slight timeout + restore editable
+        setTimeout(() => {
+          container.contentEditable = wasEditable;
+        }, 0);
+      }
+    }, 30);
+  });
+}
+
 
   container.addEventListener("click", function (e) {
     selectWordAtPoint(e.clientX, e.clientY);
