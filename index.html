@@ -81,8 +81,9 @@
       const touch = e.changedTouches[0];
       setTimeout(() => {
         selectWordAtPoint(touch.clientX, touch.clientY);
+        e.preventDefault(); // 🛑 Prevent selection from disappearing
       }, 30);
-    });
+    }, { passive: false }); // 👈 Required for preventDefault
   </script>
 </body>
 </html>
