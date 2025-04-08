@@ -2,17 +2,14 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Accurate Word Highlighter</title>
+  <title>Word Selection Only</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     #text-container {
       padding: 20px;
       font-size: 18px;
       line-height: 1.6;
-    }
-    .highlighted {
-      background-color: yellow;
-      border-radius: 4px;
+      user-select: text;
     }
     #output {
       margin-top: 20px;
@@ -30,9 +27,11 @@
     <span>هذه جملة اختبار. </span>
   </div>
 
+  <div id="output">Selected word: <span id="selected-word"></span></div>
+
   <script>
     function handleWordSelect(e) {
-        const selection = window.getSelection();
+      const selection = window.getSelection();
       if (!selection.rangeCount) return;
 
       const range = selection.getRangeAt(0);
@@ -40,7 +39,6 @@
 
       if (!node || node.nodeType !== Node.TEXT_NODE) return;
 
-      e.preventDefault();
       const text = node.textContent;
       const offset = selection.anchorOffset;
 
@@ -52,21 +50,23 @@
         const end = start + segment.segment.length;
 
         if (offset >= start && offset <= end) {
-          console.log("Selected word:", segment.segment);
-
+          // Set new selection range
           const wordRange = document.createRange();
           wordRange.setStart(node, start);
           wordRange.setEnd(node, end);
+
           selection.removeAllRanges();
           selection.addRange(wordRange);
+
+          // Optional: update output text
+          document.getElementById('selected-word').textContent = segment.segment;
           break;
         }
       }
     }
-   document.addEventListener('click', handleWordSelect);
-    document.addEventListener('touchend', handleWordSelect);
 
-
+    document.getElementById('text-container').addEventListener('click', handleWordSelect);
+    document.getElementById('text-container').addEventListener('touchend', handleWordSelect, false);
   </script>
 
 </body>
