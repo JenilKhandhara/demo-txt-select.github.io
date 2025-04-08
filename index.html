@@ -9,13 +9,11 @@
       padding: 20px;
       font-size: 1.2em;
       line-height: 1.6;
-      /* Make it feel like text can be selected */
       cursor: text;
+      user-select: text;
     }
 
-    ::selection {
-      background: yellow;
-    }
+
   </style>
 </head>
 <body>
@@ -49,48 +47,53 @@
   }
 
   function selectWordAtPoint(x, y) {
-    // Skip if user has already selected text
     if (isTextSelected()) return;
 
-    const range = getCaretRangeAt(x, y);
-    if (!range) return;
+    // Wrap in requestAnimationFrame + setTimeout to avoid flicker on mobile
+    requestAnimationFrame(() => {
+      setTimeout(() => {
+        const range = getCaretRangeAt(x, y);
+        if (!range) return;
 
-    const node = range.startContainer;
-    const offset = range.startOffset;
+        const node = range.startContainer;
+        const offset = range.startOffset;
 
-    if (node.nodeType === Node.TEXT_NODE) {
-      const text = node.textContent;
-      const left = text.slice(0, offset);
-      const right = text.slice(offset);
+        if (node.nodeType === Node.TEXT_NODE) {
+          const text = node.textContent;
+          const left = text.slice(0, offset);
+          const right = text.slice(offset);
 
-      const leftWord = left.match(/[\p{L}\p{N}]+$/u)?.[0] ?? "";
-      const rightWord = right.match(/^[\p{L}\p{N}]+/u)?.[0] ?? "";
-      const word = leftWord + rightWord;
+          const leftWord = left.match(/[\p{L}\p{N}]+$/u)?.[0] ?? "";
+          const rightWord = right.match(/^[\p{L}\p{N}]+/u)?.[0] ?? "";
+          const word = leftWord + rightWord;
 
-      if (!word) return;
+          if (!word) return;
 
-      const start = offset - leftWord.length;
-      const end = offset + rightWord.length;
+          const start = offset - leftWord.length;
+          const end = offset + rightWord.length;
 
-      const wordRange = document.createRange();
-      wordRange.setStart(node, start);
-      wordRange.setEnd(node, end);
+          const wordRange = document.createRange();
+          wordRange.setStart(node, start);
+          wordRange.setEnd(node, end);
 
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(wordRange);
-    }
+          const selection = window.getSelection();
+          selection.removeAllRanges();
+          selection.addRange(wordRange);
+        }
+      }, 30); // slight delay improves stability
+    });
   }
 
-  // Desktop click — only if nothing is selected
   container.addEventListener("click", function (e) {
     selectWordAtPoint(e.clientX, e.clientY);
   });
 
-  // Mobile tap — only if nothing is selected
   container.addEventListener("touchend", function (e) {
     const touch = e.changedTouches[0];
-    selectWordAtPoint(touch.clientX, touch.clientY);
+    // Don't interfere with long press/drag
+    if (!isTextSelected()) {
+      selectWordAtPoint(touch.clientX, touch.clientY);
+    }
   });
 </script>
 
