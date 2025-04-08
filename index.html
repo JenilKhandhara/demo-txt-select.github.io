@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word Selection on Touch</title>
+    <title>Word Selection on Click/Touch</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -37,8 +37,8 @@
     </style>
 </head>
 <body>
-    <h1>Touch to Select Words</h1>
-    <p>Tap on any word in the text below to select it:</p>
+    <h1>Click or Touch to Select Words</h1>
+    <p>Click or tap on any word in the text below to select it. You can also drag to select multiple words as usual:</p>
     
     <div id="content">
         <span>This is some English text.</span>
@@ -53,90 +53,206 @@
     </div>
 
     <script>
-        // This script enables selecting words on touch/tap in mobile browsers
         document.addEventListener('DOMContentLoaded', function() {
-            // Get the container div with all the spans
             const container = document.getElementById('content');
             const wordDisplay = document.getElementById('selected-word-display');
+            let isMouseDown = false;
+            let hasDragged = false;
+            let startX, startY;
             
-            // Add touch event listener to the container (event delegation)
+            // For tracking drag operations
+            container.addEventListener('mousedown', function(event) {
+                // Only handle left clicks
+                if (event.button !== 0) return;
+                
+                isMouseDown = true;
+                hasDragged = false;
+                startX = event.clientX;
+                startY = event.clientY;
+                
+                // Don't prevent default - allows native drag selection to work
+            });
+            
+            container.addEventListener('mousemove', function(event) {
+                if (isMouseDown) {
+                    // Check if the mouse has moved enough to be considered a drag
+                    const deltaX = Math.abs(event.clientX - startX);
+                    const deltaY = Math.abs(event.clientY - startY);
+                    
+                    if (deltaX > 3 || deltaY > 3) {
+                        hasDragged = true;
+                    }
+                }
+            });
+            
+            container.addEventListener('mouseup', function(event) {
+                if (!isMouseDown) return;
+                
+                isMouseDown = false;
+                
+                // If user dragged, let the native selection handle it
+                if (hasDragged) {
+                    // Update display with the current selection
+                    const selection = window.getSelection();
+                    if (selection && selection.toString().trim() !== '') {
+                        wordDisplay.innerHTML = `<strong>Selected:</strong> "${selection.toString()}"`;
+                    }
+                    return;
+                }
+                
+                // If it was a simple click (no drag), select the word
+                selectWordAtPoint(event.clientX, event.clientY);
+            });
+            
+            // Mobile - touch event
             container.addEventListener('touchend', function(event) {
-                // Prevent the default behavior (like zooming or scrolling)
-                event.preventDefault();
+                // Check if it was a tap (no movement/scroll)
+                if (event.changedTouches.length !== 1) return;
                 
-                // Get the touch coordinates
                 const touch = event.changedTouches[0];
+                selectWordAtPoint(touch.clientX, touch.clientY);
                 
-                // Get the element at touch position
+                // Prevent default only for taps on text
                 const element = document.elementFromPoint(touch.clientX, touch.clientY);
+                if (element && (element.closest('span') || 
+                    (element.nodeType === Node.TEXT_NODE && element.parentNode.closest('span')))) {
+                    event.preventDefault();
+                }
+            });
+            
+            // Common function to handle word selection
+            function selectWordAtPoint(x, y) {
+                // Get the element at position
+                const element = document.elementFromPoint(x, y);
+                if (!element) return false;
                 
-                // Check if we touched a span or its child text node
+                // Check if we clicked/touched a span or its child text node
                 const span = element.closest('span');
-                if (!span || !span.textContent.trim()) return;
+                if (!span || !span.textContent.trim()) return false;
                 
-                // Create a range to work with the selection
-                const range = document.createRange();
-                const selection = window.getSelection();
-                
-                // Get text node (either direct or as child)
+                // Get the text node we're working with
                 let textNode;
                 if (element.nodeType === Node.TEXT_NODE) {
                     textNode = element;
-                } else if (element.firstChild && element.firstChild.nodeType === Node.TEXT_NODE) {
-                    textNode = element.firstChild;
                 } else {
-                    return; // No text node found
+                    // Find the text node at the clicked position
+                    const walker = document.createTreeWalker(
+                        span,
+                        NodeFilter.SHOW_TEXT,
+                        null,
+                        false
+                    );
+                    
+                    while (walker.nextNode()) {
+                        const node = walker.currentNode;
+                        const range = document.createRange();
+                        range.selectNodeContents(node);
+                        const rect = range.getBoundingClientRect();
+                        
+                        if (x >= rect.left && x <= rect.right && 
+                            y >= rect.top && y <= rect.bottom) {
+                            textNode = node;
+                            break;
+                        }
+                    }
+                    
+                    // If no text node found, use the first one as fallback
+                    if (!textNode) {
+                        const firstText = span.firstChild;
+                        if (firstText && firstText.nodeType === Node.TEXT_NODE) {
+                            textNode = firstText;
+                        } else {
+                            return false;
+                        }
+                    }
                 }
                 
-                // Find the word boundaries
-                const text = textNode.textContent;
-                const touchPoint = findOffsetAtPoint(textNode, touch.clientX, touch.clientY);
-                if (touchPoint === -1) return;
+                // Now we have the correct text node, get the offset within that node
+                const offset = getTextNodeOffsetAtPoint(textNode, x, y);
+                if (offset === -1) return false;
                 
-                // Find word boundaries (works for most languages)
-                const startPos = findWordStart(text, touchPoint);
-                const endPos = findWordEnd(text, touchPoint);
+                const text = textNode.textContent;
+                
+                // Find word boundaries
+                const startPos = findWordStart(text, offset);
+                const endPos = findWordEnd(text, offset);
                 
                 // Create and apply the selection
                 try {
+                    const range = document.createRange();
                     range.setStart(textNode, startPos);
                     range.setEnd(textNode, endPos);
                     
+                    const selection = window.getSelection();
                     selection.removeAllRanges();
                     selection.addRange(range);
                     
                     // Display the selected word
                     const selectedWord = text.substring(startPos, endPos);
                     wordDisplay.innerHTML = `<strong>Selected:</strong> "${selectedWord}"`;
+                    
+                    return true;
                 } catch (e) {
                     console.error('Selection error:', e);
+                    return false;
                 }
-            });
+            }
             
-            // Helper function to find the offset in a text node at a specific coordinate
-            function findOffsetAtPoint(textNode, x, y) {
-                const range = document.createRange();
-                const textContent = textNode.textContent;
+            // More accurate way to get text node offset at point
+            function getTextNodeOffsetAtPoint(textNode, x, y) {
+                const text = textNode.textContent;
+                let lastOffset = -1;
                 
-                // Binary search to find the character at position
+                // For empty node
+                if (!text || text.length === 0) return 0;
+                
+                // For short text, check character by character
+                if (text.length < 50) {
+                    for (let i = 0; i <= text.length; i++) {
+                        const range = document.createRange();
+                        range.setStart(textNode, 0);
+                        range.setEnd(textNode, i);
+                        
+                        const rect = range.getBoundingClientRect();
+                        if (x <= rect.right) {
+                            // Determine if closer to this char or previous char
+                            if (i > 0 && x < (rect.left + rect.right) / 2) {
+                                return i - 1;
+                            }
+                            return i;
+                        }
+                        lastOffset = i;
+                    }
+                    return lastOffset;
+                }
+                
+                // For longer text, use binary search
                 let start = 0;
-                let end = textContent.length;
+                let end = text.length;
                 
                 while (start <= end) {
                     const mid = Math.floor((start + end) / 2);
                     
+                    const range = document.createRange();
                     range.setStart(textNode, 0);
                     range.setEnd(textNode, mid);
                     
                     const rect = range.getBoundingClientRect();
                     
-                    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
-                        // Refine the search
-                        if (mid === textContent.length || (x - rect.right) < (rect.right - rect.left) / textContent.length) {
-                            return mid;
-                        } else {
-                            start = mid + 1;
+                    if (x >= rect.left && x <= rect.right &&
+                        y >= rect.top && y <= rect.bottom) {
+                        // Need to find the specific character
+                        for (let i = Math.max(0, mid - 5); i <= Math.min(text.length, mid + 5); i++) {
+                            const charRange = document.createRange();
+                            charRange.setStart(textNode, i);
+                            charRange.setEnd(textNode, i + 1);
+                            
+                            const charRect = charRange.getBoundingClientRect();
+                            if (x >= charRect.left && x <= charRect.right) {
+                                return i;
+                            }
                         }
+                        return mid;
                     } else if (x < rect.left) {
                         end = mid - 1;
                     } else {
@@ -144,15 +260,26 @@
                     }
                 }
                 
-                return -1; // Not found
+                // If point is beyond the end of the text
+                if (x > getTextRightEdge(textNode)) {
+                    return text.length;
+                }
+                
+                return 0;
             }
             
-            // Find the start of a word (works for most languages)
+            // Helper to get right edge of text node
+            function getTextRightEdge(textNode) {
+                const range = document.createRange();
+                range.selectNodeContents(textNode);
+                const rect = range.getBoundingClientRect();
+                return rect.right;
+            }
+            
+            // Find the start of a word
             function findWordStart(text, position) {
                 if (position <= 0) return 0;
                 
-                // Support for different languages
-                // This basic implementation works for space-separated languages
                 let pos = position;
                 
                 // Move backward until we find a word boundary
@@ -163,12 +290,10 @@
                 return pos;
             }
             
-            // Find the end of a word (works for most languages)
+            // Find the end of a word
             function findWordEnd(text, position) {
                 if (position >= text.length) return text.length;
                 
-                // Support for different languages
-                // This basic implementation works for space-separated languages
                 let pos = position;
                 
                 // Move forward until we find a word boundary
