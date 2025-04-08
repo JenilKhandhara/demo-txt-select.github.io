@@ -69,22 +69,13 @@
 
     const container = document.getElementById('text-container');
 
-    // For touch devices
-    container.addEventListener('touchstart', (e) => {
-      touchHandled = true;
-      e.preventDefault(); // block native selection
-    }, { passive: false });
-
     container.addEventListener('touchend', (e) => {
       handleWordSelect();
+      e.preventDefault();
     });
 
     // For mouse click
-    container.addEventListener('click', (e) => {
-      if (touchHandled) {
-        touchHandled = false;
-        return; // skip duplicate click after touch
-      }
+    container.addEventListener('mousedown', (e) => {
       handleWordSelect();
     });
   </script>
