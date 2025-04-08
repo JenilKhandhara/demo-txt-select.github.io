@@ -9,6 +9,8 @@
       padding: 20px;
       font-size: 18px;
       line-height: 1.6;
+       user-select: text;
+        -webkit-user-modify: read-only;
     }
     #output {
       margin-top: 20px;
@@ -19,7 +21,7 @@
 </head>
 <body>
 
-  <div id="text-container">
+  <div id="text-container" contenteditable="true">
     <span>Click here to begin. </span>
     <span>यह एक परीक्षण वाक्य है। </span>
     <span>这是一个测试句子。 </span>
