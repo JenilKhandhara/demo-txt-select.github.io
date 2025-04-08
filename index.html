@@ -1,37 +1,74 @@
-function handleWordSelect(e) {
-  setTimeout(() => {
-    const selection = window.getSelection();
-    if (!selection.rangeCount) return;
-
-    const range = selection.getRangeAt(0);
-    const node = selection.anchorNode;
-
-    if (!node || node.nodeType !== Node.TEXT_NODE) return;
-
-    const text = node.textContent;
-    const offset = selection.anchorOffset;
-
-    const segmenter = new Intl.Segmenter('und', { granularity: 'word' });
-    const segments = [...segmenter.segment(text)];
-
-    for (const segment of segments) {
-      const start = segment.index;
-      const end = start + segment.segment.length;
-
-      if (offset >= start && offset <= end) {
-        const wordRange = document.createRange();
-        wordRange.setStart(node, start);
-        wordRange.setEnd(node, end);
-
-        selection.removeAllRanges();
-        selection.addRange(wordRange);
-
-        document.getElementById('selected-word').textContent = segment.segment;
-        break;
-      }
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Word Selection Only</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <style>
+    #text-container {
+      padding: 20px;
+      font-size: 18px;
+      line-height: 1.6;
+      user-select: text;
     }
-  }, 0); // Delay so it runs after native selection
-}
+    #output {
+      margin-top: 20px;
+      font-size: 20px;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
 
-document.getElementById('text-container').addEventListener('click', handleWordSelect);
-document.getElementById('text-container').addEventListener('touchend', handleWordSelect, false);
+  <div id="text-container">
+    <span>Click here to begin. </span>
+    <span>यह एक परीक्षण वाक्य है। </span>
+    <span>这是一个测试句子。 </span>
+    <span>هذه جملة اختبار. </span>
+  </div>
+
+  <div id="output">Selected word: <span id="selected-word"></span></div>
+
+  <script>
+   function handleWordSelect(e) {
+    setTimeout(() => {
+      const selection = window.getSelection();
+      if (!selection.rangeCount) return;
+  
+      const range = selection.getRangeAt(0);
+      const node = selection.anchorNode;
+  
+      if (!node || node.nodeType !== Node.TEXT_NODE) return;
+  
+      const text = node.textContent;
+      const offset = selection.anchorOffset;
+  
+      const segmenter = new Intl.Segmenter('und', { granularity: 'word' });
+      const segments = [...segmenter.segment(text)];
+  
+      for (const segment of segments) {
+        const start = segment.index;
+        const end = start + segment.segment.length;
+  
+        if (offset >= start && offset <= end) {
+          const wordRange = document.createRange();
+          wordRange.setStart(node, start);
+          wordRange.setEnd(node, end);
+  
+          selection.removeAllRanges();
+          selection.addRange(wordRange);
+  
+          document.getElementById('selected-word').textContent = segment.segment;
+          break;
+        }
+      }
+    }, 0); // Delay so it runs after native selection
+  }
+  
+  document.getElementById('text-container').addEventListener('click', handleWordSelect);
+  document.getElementById('text-container').addEventListener('touchend', handleWordSelect, false);
+
+  </script>
+
+</body>
+</html>
