@@ -1,89 +1,267 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Tap or Click to Select Word</title>
-  <style>
-    #container, #container * {
-      font-size: 1.2em;
-      padding: 16px;
-      line-height: 1.6;
-      user-select: text;
-      cursor: text;
-    }
-
-    ::selection {
-      background-color: yellow;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Selection on Click/Touch</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            line-height: 1.6;
+            font-size: 18px;
+        }
+        
+        #content {
+            margin-top: 20px;
+            padding: 15px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            -webkit-user-select: text; /* Explicitly allow text selection */
+            user-select: text;
+        }
+        
+        span {
+            margin-right: 5px;
+            cursor: pointer;
+        }
+        
+        #selected-word-display {
+            margin-top: 20px;
+            padding: 10px;
+            background-color: #f0f0f0;
+            border-radius: 5px;
+            min-height: 20px;
+        }
+        
+        #toggle-button {
+            margin-top: 20px;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        #toggle-button:hover {
+            background-color: #45a049;
+        }
+        
+        #status {
+            margin-top: 10px;
+            font-style: italic;
+        }
+    </style>
 </head>
 <body>
-  <div id="container">
-    <span>Tap or click any word in this sentence to select it.</span><br>
-    <span>यहाँ कुछ हिंदी शब्द हैं जिन्हें आप छू सकते हैं।</span><br>
-    <span>这里有一些中文可以点击。</span><br>
-    <span>🌍 Emojis and multilingual 😄 text are supported too!</span>
-  </div>
+    <h1>Click or Touch to Select Words</h1>
+    <p>Click or tap on any word to select it. You can also drag to select multiple words as usual.</p>
+    
+    <div id="content">
+        <span>This is some English text.</span>
+        <span>Esto es texto en español.</span>
+        <span>这是中文文本。</span>
+        <span>これは日本語のテキストです。</span>
+        <span>هذا نص باللغة العربية.</span>
+    </div>
+    
+    <div id="selected-word-display">
+        <strong>Selected word will appear here</strong>
+    </div>
+    
+    <button id="toggle-button">Toggle Quick Select Mode</button>
+    <div id="status">Currently in Quick Select Mode: ON</div>
 
-  <script>
-    const container = document.getElementById("container");
-
-    function getWordRangeFromPoint(x, y) {
-      let range;
-      if (document.caretRangeFromPoint) {
-        range = document.caretRangeFromPoint(x, y);
-      } else if (document.caretPositionFromPoint) {
-        const pos = document.caretPositionFromPoint(x, y);
-        range = document.createRange();
-        range.setStart(pos.offsetNode, pos.offset);
-        range.collapse(true);
-      }
-      if (!range) return null;
-
-      const node = range.startContainer;
-      const offset = range.startOffset;
-
-      if (node.nodeType !== Node.TEXT_NODE) return null;
-
-      const text = node.textContent;
-      const left = text.slice(0, offset);
-      const right = text.slice(offset);
-
-      const leftWord = left.match(/[\p{L}\p{N}]+$/u)?.[0] ?? "";
-      const rightWord = right.match(/^[\p{L}\p{N}]+/u)?.[0] ?? "";
-      const word = leftWord + rightWord;
-      if (!word) return null;
-
-      const wordRange = document.createRange();
-      wordRange.setStart(node, offset - leftWord.length);
-      wordRange.setEnd(node, offset + rightWord.length);
-      return wordRange;
-    }
-
-    function selectWordAtPoint(x, y) {
-      const existingSelection = window.getSelection();
-      if (existingSelection && existingSelection.toString().length > 0) return;
-
-      const wordRange = getWordRangeFromPoint(x, y);
-      if (!wordRange) return;
-
-      const sel = window.getSelection();
-      sel.removeAllRanges();
-      sel.addRange(wordRange);
-    }
-
-    container.addEventListener("click", e => {
-      selectWordAtPoint(e.clientX, e.clientY);
-    });
-
-    container.addEventListener("touchend", e => {
-      const touch = e.changedTouches[0];
-      setTimeout(() => {
-        selectWordAtPoint(touch.clientX, touch.clientY);
-        e.preventDefault(); // 🛑 Prevent selection from disappearing
-      }, 30);
-    }, { passive: false }); // 👈 Required for preventDefault
-  </script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.getElementById('content');
+            const wordDisplay = document.getElementById('selected-word-display');
+            const toggleButton = document.getElementById('toggle-button');
+            const statusDiv = document.getElementById('status');
+            
+            // State variables
+            let quickSelectEnabled = true;
+            let lastTapTime = 0;
+            let tapTimeout = null;
+            
+            // Toggle quick select mode
+            toggleButton.addEventListener('click', function() {
+                quickSelectEnabled = !quickSelectEnabled;
+                statusDiv.textContent = `Currently in Quick Select Mode: ${quickSelectEnabled ? 'ON' : 'OFF'}`;
+            });
+            
+            // Capture touchstart to identify single taps
+            container.addEventListener('touchstart', function(event) {
+                if (!quickSelectEnabled) return;
+                
+                // Prevent double-tap from interfering
+                const now = Date.now();
+                if (now - lastTapTime < 300) {
+                    return;
+                }
+                lastTapTime = now;
+                
+                // Clear any existing timeout
+                if (tapTimeout) {
+                    clearTimeout(tapTimeout);
+                }
+                
+                // Store the touch location
+                const touch = event.touches[0];
+                const x = touch.clientX;
+                const y = touch.clientY;
+                
+                // We don't prevent default to allow normal scrolling
+                
+                // Set a short timeout to handle the selection
+                // This allows the touch event to be registered properly
+                tapTimeout = setTimeout(() => {
+                    handleWordSelection(x, y);
+                }, 10);
+            }, { passive: true });
+            
+            // Handle click events for desktop
+            container.addEventListener('click', function(event) {
+                if (!quickSelectEnabled) return;
+                handleWordSelection(event.clientX, event.clientY);
+            });
+            
+            // Function to handle word selection at specific coordinates
+            function handleWordSelection(x, y) {
+                // Use document.caretRangeFromPoint to find the exact text position
+                const range = document.caretRangeFromPoint(x, y);
+                if (!range) return;
+                
+                // Check if we're inside a text node
+                const node = range.startContainer;
+                if (node.nodeType !== Node.TEXT_NODE) return;
+                
+                const text = node.textContent;
+                const offset = range.startOffset;
+                
+                // Find word boundaries
+                const startPos = findWordStart(text, offset);
+                const endPos = findWordEnd(text, offset);
+                
+                // Check if we actually have a word
+                if (startPos === endPos) return;
+                
+                // Create a new range for the word
+                const wordRange = document.createRange();
+                wordRange.setStart(node, startPos);
+                wordRange.setEnd(node, endPos);
+                
+                // Apply the selection - this will trigger native selection UI
+                const selection = window.getSelection();
+                selection.removeAllRanges();
+                selection.addRange(wordRange);
+                
+                // Update the display
+                updateSelectedDisplay();
+                
+                // Vital: Force the selection UI to appear by briefly focusing and unfocusing
+                // This trick helps ensure the selection handles appear on mobile
+                document.body.focus();
+                
+                // On iOS, we need additional help to show selection handles
+                if (isIOS()) {
+                    // Create a temporary input to help force selection handles
+                    const temp = document.createElement('input');
+                    temp.style.position = 'absolute';
+                    temp.style.opacity = '0';
+                    temp.style.height = '0';
+                    temp.style.width = '0';
+                    document.body.appendChild(temp);
+                    
+                    // Focus and blur to trigger selection UI
+                    temp.focus();
+                    setTimeout(() => {
+                        temp.blur();
+                        document.body.removeChild(temp);
+                    }, 100);
+                }
+            }
+            
+            // Helper function to detect iOS devices
+            function isIOS() {
+                return /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            }
+            
+            // Find the start of a word with improved language support
+            function findWordStart(text, position) {
+                if (position <= 0) return 0;
+                
+                let pos = position;
+                
+                // Handle different script types
+                // For CJK (Chinese, Japanese, Korean)
+                const isCJK = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(text.charAt(pos));
+                
+                if (isCJK) {
+                    // For CJK text, each character is considered a word
+                    return pos;
+                } else {
+                    // For other scripts, look for word boundaries
+                    while (pos > 0 && !/[\s.,!?;:"'\(\)\[\]\{\}<>\/\\]/.test(text.charAt(pos - 1))) {
+                        pos--;
+                    }
+                }
+                
+                return pos;
+            }
+            
+            // Find the end of a word with improved language support
+            function findWordEnd(text, position) {
+                if (position >= text.length) return text.length;
+                
+                let pos = position;
+                
+                // Check if this is CJK text
+                const isCJK = /[\u4e00-\u9fff\u3040-\u309f\u30a0-\u30ff]/.test(text.charAt(pos));
+                
+                if (isCJK) {
+                    // For CJK text, return next position
+                    return pos + 1;
+                } else {
+                    // For other scripts, look for word boundaries
+                    while (pos < text.length && !/[\s.,!?;:"'\(\)\[\]\{\}<>\/\\]/.test(text.charAt(pos))) {
+                        pos++;
+                    }
+                }
+                
+                return pos;
+            }
+            
+            // Update the display based on current selection
+            function updateSelectedDisplay() {
+                const selection = window.getSelection();
+                if (selection && selection.toString().trim() !== '') {
+                    wordDisplay.innerHTML = `<strong>Selected:</strong> "${selection.toString()}"`;
+                }
+            }
+            
+            // Listen for selection changes from any source
+            document.addEventListener('selectionchange', function() {
+                updateSelectedDisplay();
+            });
+            
+            // Handle touchend to allow scrolling
+            document.addEventListener('touchend', function() {
+                if (tapTimeout) {
+                    clearTimeout(tapTimeout);
+                    tapTimeout = null;
+                }
+            });
+            
+            // Cancel our custom selection on touchmove to allow scrolling
+            document.addEventListener('touchmove', function() {
+                if (tapTimeout) {
+                    clearTimeout(tapTimeout);
+                    tapTimeout = null;
+                }
+            }, { passive: true });
+        });
+    </script>
 </body>
 </html>
