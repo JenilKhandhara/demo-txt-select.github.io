@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Select Word on Tap or Click</title>
+  <title>Tap or Click to Select Word</title>
   <style>
-    #container {
+    #container, #container * {
       font-size: 1.2em;
       padding: 16px;
       line-height: 1.6;
@@ -79,7 +79,6 @@
 
     container.addEventListener("touchend", e => {
       const touch = e.changedTouches[0];
-      // Delay slightly to avoid interfering with long press
       setTimeout(() => {
         selectWordAtPoint(touch.clientX, touch.clientY);
       }, 30);
