@@ -2,110 +2,88 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Tap or Click to Select Word</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Select Word on Tap or Click</title>
   <style>
     #container {
-      padding: 20px;
       font-size: 1.2em;
+      padding: 16px;
       line-height: 1.6;
-      cursor: text;
       user-select: text;
+      cursor: text;
     }
 
-
+    ::selection {
+      background-color: yellow;
+    }
   </style>
 </head>
 <body>
+  <div id="container">
+    <span>Tap or click any word in this sentence to select it.</span><br>
+    <span>यहाँ कुछ हिंदी शब्द हैं जिन्हें आप छू सकते हैं।</span><br>
+    <span>这里有一些中文可以点击。</span><br>
+    <span>🌍 Emojis and multilingual 😄 text are supported too!</span>
+  </div>
 
-<div id="container">
-  <span>Tap or click any word in this sentence to select it.</span><br>
-  <span>这里有一些中文可以点击。</span><br>
-  <span>هنا بعض النصوص العربية التي يمكنك النقر عليها.</span><br>
-  <span>🌍 Emojis and multilingual 😄 text are supported too!</span>
-</div>
+  <script>
+    const container = document.getElementById("container");
 
-<script>
-  const container = document.getElementById("container");
-
-  function getCaretRangeAt(x, y) {
-    if (document.caretRangeFromPoint) {
-      return document.caretRangeFromPoint(x, y);
-    } else if (document.caretPositionFromPoint) {
-      const pos = document.caretPositionFromPoint(x, y);
-      const range = document.createRange();
-      range.setStart(pos.offsetNode, pos.offset);
-      range.collapse(true);
-      return range;
-    }
-    return null;
-  }
-
-  function isTextSelected() {
-    const sel = window.getSelection();
-    return sel && sel.toString().length > 0;
-  }
-
- function selectWordAtPoint(x, y) {
-  if (isTextSelected()) return;
-
-  requestAnimationFrame(() => {
-    setTimeout(() => {
-      const range = getCaretRangeAt(x, y);
-      if (!range) return;
+    function getWordRangeFromPoint(x, y) {
+      let range;
+      if (document.caretRangeFromPoint) {
+        range = document.caretRangeFromPoint(x, y);
+      } else if (document.caretPositionFromPoint) {
+        const pos = document.caretPositionFromPoint(x, y);
+        range = document.createRange();
+        range.setStart(pos.offsetNode, pos.offset);
+        range.collapse(true);
+      }
+      if (!range) return null;
 
       const node = range.startContainer;
       const offset = range.startOffset;
 
-      if (node.nodeType === Node.TEXT_NODE) {
-        const text = node.textContent;
-        const left = text.slice(0, offset);
-        const right = text.slice(offset);
+      if (node.nodeType !== Node.TEXT_NODE) return null;
 
-        const leftWord = left.match(/[\p{L}\p{N}]+$/u)?.[0] ?? "";
-        const rightWord = right.match(/^[\p{L}\p{N}]+/u)?.[0] ?? "";
-        const word = leftWord + rightWord;
+      const text = node.textContent;
+      const left = text.slice(0, offset);
+      const right = text.slice(offset);
 
-        if (!word) return;
+      const leftWord = left.match(/[\p{L}\p{N}]+$/u)?.[0] ?? "";
+      const rightWord = right.match(/^[\p{L}\p{N}]+/u)?.[0] ?? "";
+      const word = leftWord + rightWord;
+      if (!word) return null;
 
-        const start = offset - leftWord.length;
-        const end = offset + rightWord.length;
-
-        const wordRange = document.createRange();
-        wordRange.setStart(node, start);
-        wordRange.setEnd(node, end);
-
-        const selection = window.getSelection();
-        selection.removeAllRanges();
-        selection.addRange(wordRange);
-
-        // --- ✨ Trick: Trigger native selection UI ---
-        const wasEditable = container.contentEditable;
-        container.contentEditable = 'true';
-        container.focus();
-
-        // Stabilize selection on Android: slight timeout + restore editable
-        setTimeout(() => {
-          container.contentEditable = wasEditable;
-        }, 0);
-      }
-    }, 30);
-  });
-}
-
-
-  container.addEventListener("click", function (e) {
-    selectWordAtPoint(e.clientX, e.clientY);
-  });
-
-  container.addEventListener("touchend", function (e) {
-    const touch = e.changedTouches[0];
-    // Don't interfere with long press/drag
-    if (!isTextSelected()) {
-      selectWordAtPoint(touch.clientX, touch.clientY);
+      const wordRange = document.createRange();
+      wordRange.setStart(node, offset - leftWord.length);
+      wordRange.setEnd(node, offset + rightWord.length);
+      return wordRange;
     }
-  });
-</script>
 
+    function selectWordAtPoint(x, y) {
+      const existingSelection = window.getSelection();
+      if (existingSelection && existingSelection.toString().length > 0) return;
+
+      const wordRange = getWordRangeFromPoint(x, y);
+      if (!wordRange) return;
+
+      const sel = window.getSelection();
+      sel.removeAllRanges();
+      sel.addRange(wordRange);
+    }
+
+    container.addEventListener("click", e => {
+      selectWordAtPoint(e.clientX, e.clientY);
+    });
+
+    container.addEventListener("touchend", e => {
+      const touch = e.changedTouches[0];
+      // Delay slightly to avoid interfering with long press
+      setTimeout(() => {
+        selectWordAtPoint(touch.clientX, touch.clientY);
+      }, 30);
+    });
+  </script>
 </body>
 </html>
