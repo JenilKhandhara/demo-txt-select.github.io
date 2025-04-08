@@ -88,6 +88,7 @@
     }
 
     function handleTapOrClick(e) {
+      e.preventDefault();
       const x = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
       const y = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
       console.log('HERE1');
