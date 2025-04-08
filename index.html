@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Word Selection</title>
+  <title>Word Tap Picker</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <style>
     #text-container {
@@ -10,7 +10,6 @@
       font-size: 18px;
       line-height: 1.6;
     }
-
     #output {
       margin-top: 20px;
       font-size: 20px;
@@ -30,76 +29,86 @@
   <div id="output">Selected word: <span id="selected-word"></span></div>
 
   <script>
-    let touchHandled = false;
-
-    function handleWordSelect() {
-      setTimeout(() => {
-        const selection = window.getSelection();
-        console.log('HERE2');
-        if (!selection.rangeCount) return;
-        console.log('HERE3');
-        const range = selection.getRangeAt(0);
-        const node = selection.anchorNode;
-
-        if (!node || node.nodeType !== Node.TEXT_NODE) return;
-
-        const text = node.textContent;
-        const offset = selection.anchorOffset;
-
-        const segmenter = new Intl.Segmenter('und', { granularity: 'word' });
-        const segments = [...segmenter.segment(text)];
-
-        for (const segment of segments) {
-          const start = segment.index;
-          const end = start + segment.segment.length;
-
-          if (offset >= start && offset <= end) {
-            const wordRange = document.createRange();
-            wordRange.setStart(node, start);
-            wordRange.setEnd(node, end);
-
-            selection.removeAllRanges();
-            selection.addRange(wordRange);
-            console.log('HERE', window.getSelection().toString());
-
-            document.getElementById('selected-word').textContent = segment.segment;
-            break;
-          }
-        }
-      }, 0); // delay lets selection override native handling
-    }
-
     const container = document.getElementById('text-container');
 
-    container.addEventListener('touchend', (e) => {
-        console.log('HERE1');
-      e.preventDefault();
-      handleWordSelect();
-    });
+    function getWordInfoAtPoint(x, y) {
+      const node = document.elementFromPoint(x, y);
+      if (!node) return null;
 
-    // For mouse click
-    container.addEventListener('mousedown', (e) => {
-      handleWordSelect();
-    });
-    // Reference to an output container, use 'pre' styling for JSON output
-    var output = document.createElement('pre');
-    document.body.appendChild(output);
+      // Find deepest text node
+      let textNode = null;
+      const walker = document.createTreeWalker(node, NodeFilter.SHOW_TEXT, null);
+      while (walker.nextNode()) {
+        textNode = walker.currentNode;
+        break;
+      }
 
-    // Reference to native method(s)
-    var oldLog = console.log;
+      if (!textNode) return null;
 
-    console.log = function( ...items ) {
+      const range = document.createRange();
+      range.selectNodeContents(textNode);
 
-        // Call native method first
-        oldLog.apply(this,items);
+      const text = textNode.textContent;
+      if (!text || text.trim() === '') return null;
 
-        // Use JSON to transform objects, all others display normally
-        items.forEach( (item,i)=>{
-            items[i] = (typeof item === 'object' ? JSON.stringify(item,null,4) : item);
-        });
-        output.innerHTML += items.join(' ') + '<br />';
+      const rects = [];
+      for (let i = 0; i < text.length; i++) {
+        range.setStart(textNode, i);
+        range.setEnd(textNode, i + 1);
+        const rect = range.getBoundingClientRect();
+        rects.push({ index: i, rect });
+      }
 
-    };
+      const hit = rects.find(r =>
+        x >= r.rect.left &&
+        x <= r.rect.right &&
+        y >= r.rect.top &&
+        y <= r.rect.bottom
+      );
+
+      if (!hit) return null;
+
+      const segmenter = new Intl.Segmenter('und', { granularity: 'word' });
+      const segments = [...segmenter.segment(text)];
+
+      for (const segment of segments) {
+        const start = segment.index;
+        const end = start + segment.segment.length;
+        if (hit.index >= start && hit.index < end) {
+          return {
+            word: segment.segment,
+            start,
+            end,
+            textNode
+          };
+        }
+      }
+
+      return null;
+    }
+
+    function handleTapOrClick(e) {
+      const x = e.clientX || (e.changedTouches && e.changedTouches[0].clientX);
+      const y = e.clientY || (e.changedTouches && e.changedTouches[0].clientY);
+      if (x == null || y == null) return;
+
+      const info = getWordInfoAtPoint(x, y);
+      if (info) {
+        document.getElementById('selected-word').textContent = info.word;
+        console.log('Selected word:', info.word);
+
+        // Visibly select the word
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        const range = document.createRange();
+        range.setStart(info.textNode, info.start);
+        range.setEnd(info.textNode, info.end);
+        selection.addRange(range);
+      }
+    }
+
+    container.addEventListener('click', handleTapOrClick);
+    container.addEventListener('touchend', handleTapOrClick);
   </script>
 
 </body>
