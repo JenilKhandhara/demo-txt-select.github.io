@@ -23,10 +23,6 @@
             margin-right: 5px;
         }
         
-        .highlight {
-            background-color: yellow;
-        }
-        
         #selected-word-display {
             margin-top: 20px;
             padding: 10px;
@@ -34,11 +30,30 @@
             border-radius: 5px;
             min-height: 20px;
         }
+        
+        #toggle-button {
+            margin-top: 20px;
+            padding: 8px 16px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        
+        #toggle-button:hover {
+            background-color: #45a049;
+        }
+        
+        #status {
+            margin-top: 10px;
+            font-style: italic;
+        }
     </style>
 </head>
 <body>
     <h1>Click or Touch to Select Words</h1>
-    <p>Click or tap on any word in the text below to select it. You can also drag to select multiple words as usual:</p>
+    <p>Click or tap on any word to select it. You can also drag to select multiple words as usual.</p>
     
     <div id="content">
         <span>This is some English text.</span>
@@ -51,137 +66,177 @@
     <div id="selected-word-display">
         <strong>Selected word will appear here</strong>
     </div>
+    
+    <button id="toggle-button">Toggle Quick Select Mode</button>
+    <div id="status">Currently in Quick Select Mode: ON</div>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
             const container = document.getElementById('content');
             const wordDisplay = document.getElementById('selected-word-display');
-            let isMouseDown = false;
-            let hasDragged = false;
-            let startX, startY;
+            const toggleButton = document.getElementById('toggle-button');
+            const statusDiv = document.getElementById('status');
             
-            // For tracking drag operations
-            container.addEventListener('mousedown', function(event) {
-                // Only handle left clicks
-                if (event.button !== 0) return;
-                
-                isMouseDown = true;
-                hasDragged = false;
-                startX = event.clientX;
-                startY = event.clientY;
-                
-                // Don't prevent default - allows native drag selection to work
+            // State variables
+            let quickSelectEnabled = true;
+            let touchStartTime = 0;
+            let touchStartX = 0;
+            let touchStartY = 0;
+            let hasMoved = false;
+            let isMouseDown = false;
+            let mouseStartX = 0;
+            let mouseStartY = 0;
+            let mouseHasMoved = false;
+            
+            // Toggle quick select mode
+            toggleButton.addEventListener('click', function() {
+                quickSelectEnabled = !quickSelectEnabled;
+                statusDiv.textContent = `Currently in Quick Select Mode: ${quickSelectEnabled ? 'ON' : 'OFF'}`;
             });
             
-            container.addEventListener('mousemove', function(event) {
-                if (isMouseDown) {
-                    // Check if the mouse has moved enough to be considered a drag
-                    const deltaX = Math.abs(event.clientX - startX);
-                    const deltaY = Math.abs(event.clientY - startY);
-                    
-                    if (deltaX > 3 || deltaY > 3) {
-                        hasDragged = true;
-                    }
+            // ====== MOBILE TOUCH HANDLING ======
+            
+            // Touch start
+            container.addEventListener('touchstart', function(event) {
+                if (!quickSelectEnabled) return;
+                
+                touchStartTime = new Date().getTime();
+                const touch = event.touches[0];
+                touchStartX = touch.clientX;
+                touchStartY = touch.clientY;
+                hasMoved = false;
+            });
+            
+            // Touch move
+            container.addEventListener('touchmove', function(event) {
+                if (!quickSelectEnabled) return;
+                
+                const touch = event.touches[0];
+                const deltaX = Math.abs(touch.clientX - touchStartX);
+                const deltaY = Math.abs(touch.clientY - touchStartY);
+                
+                // If moved more than threshold, mark as dragging
+                if (deltaX > 10 || deltaY > 10) {
+                    hasMoved = true;
                 }
             });
             
-            container.addEventListener('mouseup', function(event) {
+            // Touch end
+            container.addEventListener('touchend', function(event) {
+                if (!quickSelectEnabled) return;
+                
+                const touchEndTime = new Date().getTime();
+                const touchDuration = touchEndTime - touchStartTime;
+                
+                // If this was a tap (short duration, minimal movement)
+                if (!hasMoved && touchDuration < 300) {
+                    const touch = event.changedTouches[0];
+                    
+                    // Attempt to select the word
+                    const success = selectWordAtPoint(touch.clientX, touch.clientY);
+                    
+                    // Only prevent default if we successfully selected a word
+                    if (success) {
+                        event.preventDefault();
+                        
+                        // Update the display with the current selection
+                        updateSelectedDisplay();
+                    }
+                }
+                // Otherwise, it was a drag or long press - let native behavior work
+                else if (hasMoved) {
+                    // Small delay to ensure the selection is complete
+                    setTimeout(updateSelectedDisplay, 50);
+                }
+            });
+            
+            // ====== DESKTOP MOUSE HANDLING ======
+            
+            // Mouse down
+            container.addEventListener('mousedown', function(event) {
+                if (!quickSelectEnabled || event.button !== 0) return;
+                
+                isMouseDown = true;
+                mouseStartX = event.clientX;
+                mouseStartY = event.clientY;
+                mouseHasMoved = false;
+            });
+            
+            // Mouse move
+            container.addEventListener('mousemove', function(event) {
                 if (!isMouseDown) return;
                 
-                isMouseDown = false;
+                const deltaX = Math.abs(event.clientX - mouseStartX);
+                const deltaY = Math.abs(event.clientY - mouseStartY);
                 
-                // If user dragged, let the native selection handle it
-                if (hasDragged) {
-                    // Update display with the current selection
-                    const selection = window.getSelection();
-                    if (selection && selection.toString().trim() !== '') {
-                        wordDisplay.innerHTML = `<strong>Selected:</strong> "${selection.toString()}"`;
-                    }
+                // If moved more than threshold, mark as dragging
+                if (deltaX > 5 || deltaY > 5) {
+                    mouseHasMoved = true;
+                }
+            });
+            
+            // Mouse up
+            container.addEventListener('mouseup', function(event) {
+                if (!quickSelectEnabled || !isMouseDown || event.button !== 0) {
+                    isMouseDown = false;
                     return;
                 }
                 
-                // If it was a simple click (no drag), select the word
-                selectWordAtPoint(event.clientX, event.clientY);
-            });
-            
-            // Mobile - touch event
-            container.addEventListener('touchend', function(event) {
-                // Check if it was a tap (no movement/scroll)
-                if (event.changedTouches.length !== 1) return;
+                isMouseDown = false;
                 
-                const touch = event.changedTouches[0];
-                selectWordAtPoint(touch.clientX, touch.clientY);
-                
-                // Prevent default only for taps on text
-                const element = document.elementFromPoint(touch.clientX, touch.clientY);
-                if (element && (element.closest('span') || 
-                    (element.nodeType === Node.TEXT_NODE && element.parentNode.closest('span')))) {
-                    event.preventDefault();
+                // If it was a click (no significant movement)
+                if (!mouseHasMoved) {
+                    selectWordAtPoint(event.clientX, event.clientY);
+                    updateSelectedDisplay();
+                } else {
+                    // It was a drag, update the display with the current selection
+                    setTimeout(updateSelectedDisplay, 50);
                 }
             });
             
-            // Common function to handle word selection
+            // Update the display based on current selection
+            function updateSelectedDisplay() {
+                const selection = window.getSelection();
+                if (selection && selection.toString().trim() !== '') {
+                    wordDisplay.innerHTML = `<strong>Selected:</strong> "${selection.toString()}"`;
+                }
+            }
+            
+            // Prevent mouse events from interfering with touch events
+            container.addEventListener('click', function(event) {
+                if (quickSelectEnabled && !mouseHasMoved) {
+                    // We don't want to prevent default here anymore
+                    // Since we want the native click behavior for selection highlighting
+                }
+            });
+            
+            // ====== WORD SELECTION FUNCTION ======
+            
             function selectWordAtPoint(x, y) {
-                // Get the element at position
+                // Find the element at the point
                 const element = document.elementFromPoint(x, y);
                 if (!element) return false;
                 
-                // Check if we clicked/touched a span or its child text node
-                const span = element.closest('span');
-                if (!span || !span.textContent.trim()) return false;
+                // Make sure we're working with text
+                const textContainer = element.closest('span');
+                if (!textContainer || !textContainer.textContent.trim()) return false;
                 
-                // Get the text node we're working with
-                let textNode;
-                if (element.nodeType === Node.TEXT_NODE) {
-                    textNode = element;
-                } else {
-                    // Find the text node at the clicked position
-                    const walker = document.createTreeWalker(
-                        span,
-                        NodeFilter.SHOW_TEXT,
-                        null,
-                        false
-                    );
-                    
-                    while (walker.nextNode()) {
-                        const node = walker.currentNode;
-                        const range = document.createRange();
-                        range.selectNodeContents(node);
-                        const rect = range.getBoundingClientRect();
-                        
-                        if (x >= rect.left && x <= rect.right && 
-                            y >= rect.top && y <= rect.bottom) {
-                            textNode = node;
-                            break;
-                        }
-                    }
-                    
-                    // If no text node found, use the first one as fallback
-                    if (!textNode) {
-                        const firstText = span.firstChild;
-                        if (firstText && firstText.nodeType === Node.TEXT_NODE) {
-                            textNode = firstText;
-                        } else {
-                            return false;
-                        }
-                    }
-                }
+                // Find which text node was clicked and where
+                const textPosition = findTextPositionAtPoint(textContainer, x, y);
+                if (!textPosition) return false;
                 
-                // Now we have the correct text node, get the offset within that node
-                const offset = getTextNodeOffsetAtPoint(textNode, x, y);
-                if (offset === -1) return false;
-                
-                const text = textNode.textContent;
+                const { node, offset } = textPosition;
+                const text = node.textContent;
                 
                 // Find word boundaries
                 const startPos = findWordStart(text, offset);
                 const endPos = findWordEnd(text, offset);
                 
-                // Create and apply the selection
                 try {
+                    // Create and apply the selection
                     const range = document.createRange();
-                    range.setStart(textNode, startPos);
-                    range.setEnd(textNode, endPos);
+                    range.setStart(node, startPos);
+                    range.setEnd(node, endPos);
                     
                     const selection = window.getSelection();
                     selection.removeAllRanges();
@@ -198,82 +253,135 @@
                 }
             }
             
-            // More accurate way to get text node offset at point
-            function getTextNodeOffsetAtPoint(textNode, x, y) {
-                const text = textNode.textContent;
-                let lastOffset = -1;
+            // This function finds the exact text node and offset where the point is
+            function findTextPositionAtPoint(container, x, y) {
+                // Get all text nodes
+                const textNodes = [];
+                const walker = document.createTreeWalker(
+                    container,
+                    NodeFilter.SHOW_TEXT,
+                    null,
+                    false
+                );
                 
-                // For empty node
+                let node;
+                while (node = walker.nextNode()) {
+                    textNodes.push(node);
+                }
+                
+                if (textNodes.length === 0) return null;
+                
+                // If there's just one text node, simplify the process
+                if (textNodes.length === 1) {
+                    return {
+                        node: textNodes[0],
+                        offset: findOffsetInTextNode(textNodes[0], x, y)
+                    };
+                }
+                
+                // For multiple text nodes, find which one contains the point
+                for (let i = 0; i < textNodes.length; i++) {
+                    const node = textNodes[i];
+                    const range = document.createRange();
+                    range.selectNodeContents(node);
+                    const rect = range.getBoundingClientRect();
+                    
+                    // Check if point is inside this text node's rectangle
+                    if (x >= rect.left && x <= rect.right && 
+                        y >= rect.top && y <= rect.bottom) {
+                        return {
+                            node: node,
+                            offset: findOffsetInTextNode(node, x, y)
+                        };
+                    }
+                }
+                
+                // If we couldn't find a precise match, use the first text node
+                return {
+                    node: textNodes[0],
+                    offset: findOffsetInTextNode(textNodes[0], x, y)
+                };
+            }
+            
+            // This function finds the offset within a text node
+            function findOffsetInTextNode(textNode, x, y) {
+                const text = textNode.textContent;
+                
+                // Empty text case
                 if (!text || text.length === 0) return 0;
                 
-                // For short text, check character by character
-                if (text.length < 50) {
+                // For very short text, check character by character
+                if (text.length < 25) {
+                    let bestOffset = 0;
+                    let closestDistance = Infinity;
+                    
                     for (let i = 0; i <= text.length; i++) {
                         const range = document.createRange();
                         range.setStart(textNode, 0);
                         range.setEnd(textNode, i);
-                        
                         const rect = range.getBoundingClientRect();
-                        if (x <= rect.right) {
-                            // Determine if closer to this char or previous char
-                            if (i > 0 && x < (rect.left + rect.right) / 2) {
-                                return i - 1;
-                            }
-                            return i;
+                        
+                        // Find distance to this point
+                        const distance = Math.abs(x - rect.right);
+                        
+                        if (distance < closestDistance) {
+                            closestDistance = distance;
+                            bestOffset = i;
                         }
-                        lastOffset = i;
                     }
-                    return lastOffset;
+                    
+                    return bestOffset;
                 }
                 
-                // For longer text, use binary search
-                let start = 0;
-                let end = text.length;
+                // For longer text, use binary search for efficiency
+                let lo = 0;
+                let hi = text.length;
+                let mid, loRect, hiRect, midRect;
                 
-                while (start <= end) {
-                    const mid = Math.floor((start + end) / 2);
+                // Initial bounds
+                let range = document.createRange();
+                range.setStart(textNode, 0);
+                range.setEnd(textNode, 0);
+                loRect = range.getBoundingClientRect();
+                
+                range = document.createRange();
+                range.setStart(textNode, text.length);
+                range.setEnd(textNode, text.length);
+                hiRect = range.getBoundingClientRect();
+                
+                // If point is before the start or after the end
+                if (x <= loRect.right) return 0;
+                if (x >= hiRect.left) return text.length;
+                
+                // Binary search for the closest offset
+                while (lo <= hi) {
+                    mid = Math.floor((lo + hi) / 2);
                     
-                    const range = document.createRange();
+                    range = document.createRange();
                     range.setStart(textNode, 0);
                     range.setEnd(textNode, mid);
+                    midRect = range.getBoundingClientRect();
                     
-                    const rect = range.getBoundingClientRect();
-                    
-                    if (x >= rect.left && x <= rect.right &&
-                        y >= rect.top && y <= rect.bottom) {
-                        // Need to find the specific character
-                        for (let i = Math.max(0, mid - 5); i <= Math.min(text.length, mid + 5); i++) {
-                            const charRange = document.createRange();
-                            charRange.setStart(textNode, i);
-                            charRange.setEnd(textNode, i + 1);
-                            
-                            const charRect = charRange.getBoundingClientRect();
-                            if (x >= charRect.left && x <= charRect.right) {
-                                return i;
-                            }
-                        }
-                        return mid;
-                    } else if (x < rect.left) {
-                        end = mid - 1;
+                    if (x <= midRect.right) {
+                        hi = mid - 1;
                     } else {
-                        start = mid + 1;
+                        lo = mid + 1;
                     }
                 }
                 
-                // If point is beyond the end of the text
-                if (x > getTextRightEdge(textNode)) {
-                    return text.length;
+                // Refine to find the closest edge
+                const finalOffset = lo;
+                range = document.createRange();
+                range.setStart(textNode, 0);
+                range.setEnd(textNode, finalOffset);
+                const finalRect = range.getBoundingClientRect();
+                
+                // If closer to previous character
+                if (finalOffset > 0 && x < (finalRect.right + finalRect.left) / 2) {
+                    return finalOffset - 1;
                 }
                 
-                return 0;
-            }
-            
-            // Helper to get right edge of text node
-            function getTextRightEdge(textNode) {
-                const range = document.createRange();
-                range.selectNodeContents(textNode);
-                const rect = range.getBoundingClientRect();
-                return rect.right;
+                return finalOffset;
             }
             
             // Find the start of a word
@@ -303,6 +411,11 @@
                 
                 return pos;
             }
+            
+            // Listen for selection changes from any source
+            document.addEventListener('selectionchange', function() {
+                updateSelectedDisplay();
+            });
         });
     </script>
 </body>
