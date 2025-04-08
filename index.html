@@ -106,8 +106,10 @@
         const range = document.createRange();
         range.setStart(info.textNode, info.start);
         range.setEnd(info.textNode, info.end);
-        selection.addRange(range);
-        console.log('HERE4',window.getSelection().toString());
+        setTimeout(() => {
+            selection.addRange(range);
+            console.log('HERE4',window.getSelection().toString());
+        }, 0);
       }
     }
 
