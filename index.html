@@ -90,7 +90,10 @@
     }
 
     container.addEventListener('click', handleInteraction);
-    container.addEventListener('touchend', handleInteraction);
+    container.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handleInteraction(e);
+    });
     document.addEventListener('selectionchange', (e) => {
          let selectedText = window.getSelection();
         console.log('HERE5', selectedText.toString());
