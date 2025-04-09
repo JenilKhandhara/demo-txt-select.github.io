@@ -27,9 +27,18 @@
   </div>
 
   <div id="output">Selected word: <span id="selected-word"></span></div>
+  <button onclick="selectAll()">Select All</button>
 
   <script>
     const container = document.getElementById('text-container');
+
+    function selectAll() { 
+        let selectedText = window.getSelection();
+        selectedText.removeAllRanges();
+        const range = document.createRange();
+        range.selectNodeContents(container);
+        selectedText.addRange(range);
+    }
 
     function getTextNodesUnder(el) {
       const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
