@@ -99,15 +99,24 @@
     }
 
     container.addEventListener('click', handleInteraction);
-    container.addEventListener('touchend', (e) => {
-        e.preventDefault();
-        handleInteraction(e);
-    });
+    // container.addEventListener('touchend', (e) => {
+    //     e.preventDefault();
+    //     handleInteraction(e);
+    // });
     document.addEventListener('selectionchange', (e) => {
          let selectedText = window.getSelection();
         console.log('HERE5', selectedText.toString());
         
     });
+    document.addEventListener('touchstart', (e) => {
+        console.log('HERE touchstart');
+    })
+    document.addEventListener('touchend', (e) => {
+        console.log('HERE touchend');
+    })
+    document.addEventListener('click', (e) => {
+        console.log('HERE click');
+    })
      // Reference to an output container, use 'pre' styling for JSON output
   var output = document.createElement('pre');
   document.body.appendChild(output);
