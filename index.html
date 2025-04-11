@@ -109,10 +109,10 @@
         
     });
     document.addEventListener('touchstart', (e) => {
-        console.log('HERE touchstart');
+        console.log('HERE touchstart', e.touches);
     })
     document.addEventListener('touchend', (e) => {
-        console.log('HERE touchend');
+        console.log('HERE touchend'. e.touches, e.changedTouches);
     })
     document.addEventListener('click', (e) => {
         console.log('HERE click');
