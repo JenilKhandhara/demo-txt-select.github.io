@@ -110,9 +110,24 @@
     });
     document.addEventListener('touchstart', (e) => {
         console.log('HERE touchstart', e.touches);
+        if (e.touches) {
+            e.touches.forEach((touch) => {
+                console.log(touch.clientX, touch.clientY);
+            });
+        }
     })
     document.addEventListener('touchend', (e) => {
         console.log('HERE touchend'. e.touches, e.changedTouches);
+        if (e.touches) {
+            e.touches.forEach((touch) => {
+                console.log(touch.clientX, touch.clientY);
+            });
+        }
+        if (e.changedTouches) {
+            e.changedTouches.forEach((touch) => {
+                console.log(touch.clientX, touch.clientY);
+            });
+        }
     })
     document.addEventListener('click', (e) => {
         console.log('HERE click');
