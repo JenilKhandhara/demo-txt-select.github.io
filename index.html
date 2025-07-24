@@ -1,155 +1,307 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Optimized Word Tap Selector (By Word)</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    #text-container {
-      padding: 20px;
-      font-size: 18px;
-      line-height: 1.6;
-    }
-    #output {
-      margin-top: 20px;
-      font-size: 20px;
-      font-weight: bold;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test Action Bar Suppression Methods</title>
+<style>
+body {
+font-family: Arial, sans-serif;
+padding: 16px;
+max-width: 600px;
+margin: 0 auto;
+line-height: 1.6;
+}
+
+h1 {
+color: #333;
+text-align: center;
+font-size: 1.5em;
+margin-bottom: 16px;
+}
+
+h2 {
+color: #444;
+font-size: 1.2em;
+margin-top: 20px;
+}
+
+.method-container {
+margin-bottom: 25px;
+padding: 15px;
+border: 1px solid #ddd;
+border-radius: 8px;
+background-color: #f9f9f9;
+}
+
+.method-title {
+font-weight: bold;
+margin-bottom: 10px;
+color: #1a73e8;
+}
+
+.test-text {
+padding: 10px;
+background-color: #fff;
+border-radius: 4px;
+border-left: 3px solid #1a73e8;
+margin-bottom: 10px;
+}
+
+/* Individual method styles */
+.css-touch-callout {
+-webkit-touch-callout: none;
+}
+
+.css-user-select {
+-webkit-user-select: text;
+user-select: text;
+}
+
+.button-container {
+display: flex;
+justify-content: space-between;
+margin: 20px 0;
+flex-wrap: wrap;
+gap: 10px;
+}
+
+.platform-button {
+padding: 10px 15px;
+background-color: #1a73e8;
+color: white;
+border: none;
+border-radius: 4px;
+cursor: pointer;
+font-size: 1em;
+width: 100%;
+}
+
+.platform-android {
+background-color: #3ddc84;
+}
+
+.platform-ios {
+background-color: #007aff;
+}
+
+.device-info {
+background-color: #e6f4ea;
+padding: 10px;
+border-radius: 4px;
+margin-bottom: 20px;
+border-left: 3px solid #34a853;
+}
+</style>
 </head>
 <body>
+<h1>Test Action Bar Suppression Methods</h1>
 
-  <div id="text-container">
-    <span>Click here to begin. </span>
-    <span>यह <b>एक</b> परीक्षण वाक्य है। </span>
-    <span>这是一个测试句子。 </span>
-    <span>هذه جملة اختبار. </span>
-  </div>
+<div class="device-info" id="deviceInfo">
+Detecting device...
+</div>
 
-  <div id="output">Selected word: <span id="selected-word"></span></div>
-  <button onclick="selectAll()">Select All</button>
+<div class="button-container">
+<button class="platform-button platform-android" id="androidMethodsButton">Show Android Methods</button>
+<button class="platform-button platform-ios" id="iosMethodsButton">Show iOS Methods</button>
+</div>
 
-  <script>
-    const container = document.getElementById('text-container');
+<!-- Android Methods -->
+<div id="androidMethods" style="display: none;">
+<h2>Android Methods</h2>
 
-    function selectAll() { 
-        let selectedText = window.getSelection();
-        selectedText.removeAllRanges();
-        const range = document.createRange();
-        range.selectNodeContents(container);
-        selectedText.addRange(range);
-    }
+<div class="method-container">
+<div class="method-title">Control - Normal Text (No Suppression)</div>
+<div class="test-text">This is normal text with no suppression. The action bar should appear when you select this text.</div>
+</div>
 
-    function getTextNodesUnder(el) {
-      const walker = document.createTreeWalker(el, NodeFilter.SHOW_TEXT);
-      const nodes = [];
-      while (walker.nextNode()) {
-        if (walker.currentNode.textContent.trim()) {
-          nodes.push(walker.currentNode);
-        }
-      }
-      return nodes;
-    }
+<div class="method-container">
+<div class="method-title">Method 1: contextmenu event prevention</div>
+<div class="test-text" id="android-method-1">Try selecting this text. The contextmenu event is prevented, which should block the action bar on Android.</div>
+</div>
 
-    function getWordAtPoint(x, y) {
-      const el = document.elementFromPoint(x, y);
-      if (!el) return null;
+<div class="method-container">
+<div class="method-title">Method 2: touchstart event prevention</div>
+<div class="test-text" id="android-method-2">Try selecting this text. The touchstart event is modified to prevent the action bar.</div>
+</div>
 
-      const textNodes = getTextNodesUnder(el);
+<div class="method-container">
+<div class="method-title">Method 3: CSS user-select modification</div>
+<div class="test-text" id="android-method-3">Try selecting this text. CSS user-select properties are modified to influence Android's action bar.</div>
+</div>
+</div>
 
-      for (const node of textNodes) {
-        const text = node.textContent;
-        const segmenter = new Intl.Segmenter('und', { granularity: 'word' });
-        const segments = [...segmenter.segment(text)];
+<!-- iOS Methods -->
+<div id="iosMethods" style="display: none;">
+<h2>iOS Methods</h2>
 
-        for (const segment of segments) {
-          const start = segment.index;
-          const end = start + segment.segment.length;
+<div class="method-container">
+<div class="method-title">Control - Normal Text (No Suppression)</div>
+<div class="test-text">This is normal text with no suppression. The action bar should appear when you select this text.</div>
+</div>
 
-          const range = document.createRange();
-          range.setStart(node, start);
-          range.setEnd(node, end);
-          const rect = range.getBoundingClientRect();
+<div class="method-container">
+<div class="method-title">Method 1: CSS -webkit-touch-callout</div>
+<div class="test-text css-touch-callout" id="ios-method-1">Try selecting this text. The -webkit-touch-callout CSS property is set to none, which should prevent the iOS callout.</div>
+</div>
 
-          if (
-            x >= rect.left && x <= rect.right &&
-            y >= rect.top && y <= rect.bottom
-          ) {
-            return { range, word: segment.segment };
-          }
-        }
-      }
+<div class="method-container">
+<div class="method-title">Method 2: selectionchange event handling</div>
+<div class="test-text" id="ios-method-2">Try selecting this text. The selectionchange event is used to detect and disrupt the action bar.</div>
+</div>
 
-      return null;
-    }
+<div class="method-container">
+<div class="method-title">Method 3: Touch event redirection</div>
+<div class="test-text" id="ios-method-3">Try selecting this text. Touch events are redirected to dismiss the action bar.</div>
+</div>
 
-    function handleInteraction(event) {
-      const touch = event.touches ? event.changedTouches[0] : event;
-      const x = touch.clientX;
-      const y = touch.clientY;
+<div class="method-container">
+<div class="method-title">Method 4: Selection manipulation</div>
+<div class="test-text" id="ios-method-4">Try selecting this text. The selection is briefly moved to disrupt the action bar and then restored.</div>
+</div>
+</div>
 
-      const result = getWordAtPoint(x, y);
-      if (!result) return;
+<script>
+// Device detection
+function isIOS() {
+return /iPad|iPhone|iPod/.test(navigator.userAgent) || 
+(navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
 
-      const selection = window.getSelection();
-      selection.removeAllRanges();
-      selection.addRange(result.range);
+function isAndroid() {
+return /Android/.test(navigator.userAgent);
+}
 
-      document.getElementById('selected-word').textContent = result.word;
-    }
+// Set up device info
+const deviceInfo = document.getElementById('deviceInfo');
+if (isIOS()) {
+deviceInfo.innerHTML = '<strong>iOS Device Detected</strong> - iOS methods are recommended for this device.';
+} else if (isAndroid()) {
+deviceInfo.innerHTML = '<strong>Android Device Detected</strong> - Android methods are recommended for this device.';
+} else {
+deviceInfo.innerHTML = '<strong>Desktop Device Detected</strong> - These methods are designed for mobile devices.';
+}
 
-    container.addEventListener('click', handleInteraction);
-    // container.addEventListener('touchend', (e) => {
-    //     e.preventDefault();
-    //     handleInteraction(e);
-    // });
-    document.addEventListener('selectionchange', (e) => {
-         let selectedText = window.getSelection();
-        console.log('HERE5', selectedText.toString());
-        
-    });
-    document.addEventListener('touchstart', (e) => {
-        console.log('HERE touchstart', e?.touches[0]?.clientX, e?.touches[0]?.clientY);
-       
-    })
-    document.addEventListener('touchend', (e) => {
-        console.log('HERE touchend', window.lastTouchPosition);
-        console.log('HERE touchend', e?.changedTouches[0]?.clientX, e?.changedTouches[0]?.clientY);
-    })
-    document.addEventListener('click', (e) => {
-        console.log('HERE click');
-    })
-     // Reference to an output container, use 'pre' styling for JSON output
-  var output = document.createElement('pre');
-  document.body.appendChild(output);
-  
-  // Reference to native method(s)
-  var oldLog = console.log;
-  
-  console.log = function( ...items ) {
-  
-      // Call native method first
-      oldLog.apply(this,items);
-  
-      // Use JSON to transform objects, all others display normally
-      items.forEach( (item,i)=>{
-          items[i] = (typeof item === 'object' ? JSON.stringify(item,null,4) : item);
-      });
-      output.innerHTML += items.join(' ') + '<br />';
-  
-  };
-  
-  // You could even allow Javascript input...
-  function consoleInput( data ) {
-      // Print it to console as typed
-      console.log( data + '<br />' );
-      try {
-          console.log( eval( data ) );
-      } catch (e) {
-          console.log( e.stack );
-      }
-  }
-  </script>
+// Toggle between Android and iOS methods
+document.getElementById('androidMethodsButton').addEventListener('click', function() {
+document.getElementById('androidMethods').style.display = 'block';
+document.getElementById('iosMethods').style.display = 'none';
+});
 
+document.getElementById('iosMethodsButton').addEventListener('click', function() {
+document.getElementById('androidMethods').style.display = 'none';
+document.getElementById('iosMethods').style.display = 'block';
+});
+
+// Show the appropriate methods based on device by default
+if (isIOS()) {
+document.getElementById('iosMethodsButton').click();
+} else {
+document.getElementById('androidMethodsButton').click();
+}
+
+// ========== Android Methods ==========
+
+// Method 1: contextmenu event prevention
+document.getElementById('android-method-1').addEventListener('contextmenu', function(e) {
+e.preventDefault();
+            return false;
+});
+
+// Method 2: touchstart event modification
+document.getElementById('android-method-2').addEventListener('touchstart', function(e) {
+// Allow touch events but try to disrupt action bar
+setTimeout(() => {
+document.body.dispatchEvent(new TouchEvent('touchstart', {
+bubbles: true,
+cancelable: true,
+view: window
+}));
+}, 100);
+});
+
+// Method 3: CSS user-select modification
+const androidMethod3 = document.getElementById('android-method-3');
+androidMethod3.style.userSelect = 'text';
+androidMethod3.style.webkitUserSelect = 'text';
+androidMethod3.addEventListener('mousedown', function(e) {
+// Allow selection but try to prevent action bar
+e.stopPropagation();
+});
+
+// ========== iOS Methods ==========
+
+// Method 1: CSS -webkit-touch-callout is applied via CSS class
+
+// Method 2: selectionchange event handling
+const iosMethod2 = document.getElementById('ios-method-2');
+document.addEventListener('selectionchange', function() {
+const selection = window.getSelection();
+if (selection.toString().length > 0) {
+// Check if the selection is within our target element
+let node = selection.anchorNode;
+while (node && node !== iosMethod2) {
+node = node.parentNode;
+}
+
+if (node === iosMethod2) {
+// Force blur on any focused elements
+if (document.activeElement) {
+document.activeElement.blur();
+}
+}
+}
+});
+
+// Method 3: Touch event redirection
+document.getElementById('ios-method-3').addEventListener('touchend', function(e) {
+setTimeout(() => {
+document.body.dispatchEvent(new TouchEvent('touchstart', {
+bubbles: true,
+cancelable: true,
+view: window
+}));
+
+setTimeout(() => {
+document.body.dispatchEvent(new TouchEvent('touchend', {
+bubbles: true,
+cancelable: true,
+view: window
+}));
+}, 10);
+}, 10);
+});
+
+// Method 4: Selection manipulation
+document.getElementById('ios-method-4').addEventListener('mouseup', handleIosMethod4);
+document.getElementById('ios-method-4').addEventListener('touchend', handleIosMethod4);
+
+function handleIosMethod4(e) {
+setTimeout(() => {
+const selection = window.getSelection();
+if (selection.rangeCount > 0 && selection.toString().length > 0) {
+// Save current selection
+const savedRange = selection.getRangeAt(0).cloneRange();
+
+// Create temporary element outside viewport
+const temp = document.createElement('div');
+temp.style.position = 'absolute';
+temp.style.left = '-9999px';
+temp.textContent = 'temp';
+document.body.appendChild(temp);
+
+// Select the temporary element briefly
+selection.selectAllChildren(temp);
+
+// Restore original selection after a brief delay
+setTimeout(() => {
+selection.removeAllRanges();
+selection.addRange(savedRange);
+document.body.removeChild(temp);
+}, 10);
+}
+}, 50);
+}
+</script>
 </body>
 </html>
